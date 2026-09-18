@@ -15,10 +15,12 @@ def load_data():
     alc.columns = alc.columns.astype(str).str.strip()
     bom.columns = bom.columns.astype(str).str.strip()
 
-    # 공백/결측 정리
+    # 공백/결측 정리 (NaN은 먼저 제거한 뒤 문자열로 변환 — pandas 버전에 따라
+    # astype(str)이 NaN을 "nan" 문자열이 아닌 float NaN으로 남기는 경우가 있어 순서 중요)
+    alc = alc.dropna(subset=["차종", "ALC"])
     alc["차종"] = alc["차종"].astype(str).str.strip()
     alc["ALC"] = alc["ALC"].astype(str).str.strip()
-    alc = alc[alc["ALC"] != "nan"]
+    alc = alc[(alc["차종"] != "") & (alc["ALC"] != "")]
 
     bom["모품번"] = bom["모품번"].astype(str).str.strip()
     return alc, bom
