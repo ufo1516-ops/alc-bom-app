@@ -11,6 +11,10 @@ def load_data():
     alc = pd.read_excel(DATA_PATH, sheet_name="ALC")
     bom = pd.read_excel(DATA_PATH, sheet_name="BOM")
 
+    # 컬럼명에 섞인 보이지 않는 공백/줄바꿈 제거 (KeyError 방지)
+    alc.columns = alc.columns.astype(str).str.strip()
+    bom.columns = bom.columns.astype(str).str.strip()
+
     # 공백/결측 정리
     alc["차종"] = alc["차종"].astype(str).str.strip()
     alc["ALC"] = alc["ALC"].astype(str).str.strip()
@@ -51,21 +55,36 @@ else:
     st.divider()
     st.subheader(f"📋 사양 정보 — {row['사양명']}")
 
+    def safe_get(r, col, default="-"):
+        # 값이 없거나(NaN) 컬럼 자체가 없을 때도 에러 없이 기본값 반환
+        if col not in r.index:
+            return default
+        val = r[col]
+        if pd.isna(val) or str(val).strip() in ("", "nan", "#N/A"):
+            return default
+        return val
+
     info_cols = st.columns(4)
-    info_cols[0].metric("고객사품번", row["고객사품번"])
-    info_cols[1].metric("미러텍품번", row["미러텍품번"])
-    info_cols[2].metric("F_SUB_HALB", row["F_SUB_HALB"])
-    info_cols[3].metric("F_SUB_ROH1", row["F_SUB_ROH1"])
+    info_cols[0].metric("고객사품번", safe_get(row, "고객사품번"))
+    info_cols[1].metric("미러텍품번", safe_get(row, "미러텍품번"))
+    info_cols[2].metric("F_SUB_HALB", safe_get(row, "F_SUB_HALB"))
+    info_cols[3].metric("F_SUB_ROH1", safe_get(row, "F_SUB_ROH1"))
 
     st.subheader("🧩 하위 단품 자재 목록 (BOM)")
 
     # ROH1 기준으로 BOM 매칭
-    parent_code = str(row["F_SUB_ROH1"]).strip()
-    bom_matched = bom_df[bom_df["모품번"] == parent_code]
+    parent_code_raw = safe_get(row, "F_SUB_ROH1", default=None)
+    parent_code = str(parent_code_raw).strip() if parent_code_raw is not None else None
 
-    if bom_matched.empty:
-        st.info(f"BOM에서 모품번 '{parent_code}'에 해당하는 하위 자재를 찾지 못했습니다.")
+    if parent_code is None:
+        st.info("이 사양에는 F_SUB_ROH1 값이 없어 BOM을 조회할 수 없습니다.")
+        bom_matched = bom_df.iloc[0:0]  # 빈 데이터프레임
     else:
+        bom_matched = bom_df[bom_df["모품번"] == parent_code]
+        if bom_matched.empty:
+            st.info(f"BOM에서 모품번 '{parent_code}'에 해당하는 하위 자재를 찾지 못했습니다.")
+
+    if not bom_matched.empty:
         display_cols = ["자품목", "자품명", "유형", "소요량", "품목", "비고"]
         display_cols = [c for c in display_cols if c in bom_matched.columns]
         st.dataframe(
