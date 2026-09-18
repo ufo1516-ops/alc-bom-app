@@ -54,12 +54,13 @@ else:
     info_cols = st.columns(4)
     info_cols[0].metric("고객사품번", row["고객사품번"])
     info_cols[1].metric("미러텍품번", row["미러텍품번"])
-    info_cols[2].metric("F/SUB HALB", row["F/SUB_HALB"])
-    info_cols[3].metric("F/SUB ROH1", row["F/SUB_ROH1"])
+    info_cols[2].metric("F_SUB_HALB", row["F_SUB_HALB"])
+    info_cols[3].metric("F_SUB_ROH1", row["F_SUB_ROH1"])
 
     st.subheader("🧩 하위 단품 자재 목록 (BOM)")
 
-    parent_code = str(row["F/SUB_ROH1"]).strip()
+    # ROH1 기준으로 BOM 매칭
+    parent_code = str(row["F_SUB_ROH1"]).strip()
     bom_matched = bom_df[bom_df["모품번"] == parent_code]
 
     if bom_matched.empty:
